@@ -1,4 +1,6 @@
 import copy  # Tahtanın kopyasını almak için kullanılır (Minimax için gerekli)
+import tkinter as tk
+from tkinter import messagebox
 
 # 🎮 Tahta başlatılıyor: 3x3 boyutunda, tüm hücreler boş (' ')
 board = [[' ' for _ in range(3)] for _ in range(3)]
@@ -10,6 +12,20 @@ player2_score = 0  # Oyuncu 2 (bilgisayar)
 # ✅ Oyuncu sırasını tutan değişken: True → Oyuncu 1, False → Bilgisayar
 player_turn = True
 
+# 🪟 Tkinter GUI başlatılıyor
+root = tk.Tk()
+root.title("SOS Oyunu (Tkinter)")
+
+# 🔤 Oyuncunun seçtiği harf (başlangıçta 'S')
+selected_letter = tk.StringVar(value='S')
+
+# 🧱 Tahtadaki butonları ve durum/sıralama etiketlerini tutan yapılar
+grid_buttons = [[None for _ in range(3)] for _ in range(3)]
+status_label = tk.Label(root, text="Oyuncu 1'in sırası", font=("Arial", 14))
+score_label = tk.Label(root, text="Skor - Oyuncu: 0 | Bilgisayar: 0", font=("Arial", 12))
+
+
+'''
 # 🖨️ Tahtayı kullanıcıya okunabilir şekilde yazdıran fonksiyon
 def print_board(board):
     print("\n  0   1   2")  # Sütun başlıkları
@@ -18,7 +34,7 @@ def print_board(board):
         # Satır içeriğini çizgilerle biçimlendirerek yazdır
         row = f"{i}| {board[i][0]} | {board[i][1]} | {board[i][2]} |"
         print(row)
-        print("-------------")
+        print("-------------") '''
 
 # 🔍 Belirli bir hücreye harf yerleştirildikten sonra oluşan SOS'ları sayar
 def check_sos(board, row, col):
@@ -183,7 +199,8 @@ def minimax(board, depth, alpha, beta, maximizing_player, is_ai_turn):
 
 # 🤖 Bilgisayarın en iyi hamleyi yapmasını sağlar
 def make_ai_move():
-    print("\n🤖 Bilgisayar düşünüyor...")
+   # print("\n🤖 Bilgisayar düşünüyor...")
+    global player2_score, player_turn  # player_turn burada eksik
 
     # 🧠 minimax fonksiyonu ile AI en iyi hamleyi arıyor
     # depth → arama derinliği (ne kadar ileriyi görebileceğini belirler)
@@ -208,11 +225,83 @@ def make_ai_move():
 
         # 🌟 Global değişkeni kullanarak bilgisayarın puanını güncelle
         global player2_score
-        player2_score += sos
+        player2_score += sos # Bilgisayar skoru güncellenir
+        grid_buttons[i][j].config(text=letter, state='disabled') # Buton devre dışı bırakılır
+        update_score()
+        if sos == 0:
+            player_turn = True # Sıra oyuncuya geçer
+        else:
+            status_label.config(text=f"Bilgisayar {sos} puan aldı!")
+        if is_board_full(board):
+            end_game()
+
 
         # 🖨️ Bilgisayarın yaptığı hamleyi ve aldığı puanı kullanıcıya bildir
-        print(f"🤖 Bilgisayar {i},{j} konumuna '{letter}' koydu. {sos} puan aldı. Toplam: {player2_score}")
+       # print(f"🤖 Bilgisayar {i},{j} konumuna '{letter}' koydu. {sos} puan aldı. Toplam: {player2_score}")
 
+# 🔃 Skor etiketini günceller (GUI ekranında)
+def update_score():
+    score_label.config(text=f"Skor - Oyuncu: {player1_score} | Bilgisayar: {player2_score}")
+
+# 👤 Oyuncunun butona tıklamasıyla hamle yapılır ve bu fonksiyon çalışır
+def player_move(i, j):
+    global player1_score, player_turn
+    if board[i][j] != ' ' or not player_turn:
+        return  # Hücre doluysa veya sırası değilse hiçbir şey yapma
+    letter = selected_letter.get() # Oyuncunun seçtiği harf alınır
+    board[i][j] = letter
+    grid_buttons[i][j].config(text=letter, state='disabled') # Hücreye harf yazılır ve pasif yapılır
+    sos = check_sos(board, i, j)
+    player1_score += sos
+    update_score()
+
+    if sos == 0:
+        player_turn = False # Skor alınmadıysa sıra bilgisayara geçer
+        status_label.config(text="Bilgisayarın sırası")
+        root.after(500, make_ai_move) # 500ms sonra bilgisayar hamlesi yapılır
+    else:
+        status_label.config(text=f"Oyuncu {sos} puan aldı!")
+    if is_board_full(board):
+        end_game() # Oyun biterse sonucu göster
+
+
+# 🏁 Oyun bitince sonucu gösterir ve pencereyi kapatır
+def end_game():
+    if player1_score > player2_score:
+        message = "Oyuncu 1 kazandı!"
+    elif player2_score > player1_score:
+        message = "Bilgisayar kazandı!"
+    else:
+        message = "Berabere!"
+    messagebox.showinfo("Oyun Bitti", message)
+    root.quit() # Uygulama kapanır
+
+# 🧱 GUI bileşenlerini oluştur: harf seçimi, durum, skor ve butonlar
+letter_frame = tk.Frame(root)
+tk.Radiobutton(letter_frame, text='S', variable=selected_letter, value='S').pack(side='left')
+tk.Radiobutton(letter_frame, text='O', variable=selected_letter, value='O').pack(side='left')
+# Eskisi:
+# status_label.pack()
+# score_label.pack()
+
+# Yenisi:
+status_label.grid(row=0, column=0, columnspan=3, pady=(10, 0))
+score_label.grid(row=1, column=0, columnspan=3, pady=(0, 10))
+letter_frame.grid(row=2, column=0, columnspan=3)
+
+# 🧮 3x3 butonlu tahta oluştur
+for i in range(3):
+    for j in range(3):
+        btn = tk.Button(root, text=' ', font=("Arial", 24), width=3, height=1, command=lambda i=i, j=j: player_move(i, j))
+        btn.grid(row=i + 3, column=j)
+        grid_buttons[i][j] = btn
+
+# 🚀 Tkinter ana döngüsünü başlatılır (GUI çalışır)
+root.mainloop()
+
+
+
+'''
 # 🎮 Oyunun ana döngüsü
 while True:
     print_board(board)  # Her turda tahtayı göster
@@ -270,4 +359,4 @@ while True:
             print("🏆 Bilgisayar kazandı!")
         else:
             print("🤝 Berabere!")
-        break  # Döngü sonlanır, oyun biter
+        break  # Döngü sonlanır, oyun biter '''
